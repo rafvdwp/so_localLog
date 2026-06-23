@@ -20,6 +20,25 @@ class LogController extends Controller
         '1y'   => 60 * 24 * 365,
     ];
 
+    public function reset(Request $request)
+    {
+        $request->validate([
+            'confirmation' => ['required', 'string'],
+        ]);
+
+        if ($request->input('confirmation') !== 'Delete') {
+            return back()->withErrors([
+                'confirmation' => 'Confirmation text did not match. Type "Delete" exactly to clear all logs.',
+            ]);
+        }
+
+        LogEntry::truncate();
+
+        return redirect()
+            ->route('logs.index')
+            ->with('status', 'All log entries have been permanently deleted.');
+    }
+
     public function index(Request $request)
     {
         $query = LogEntry::with('server')->orderBy('logged_at', 'desc');

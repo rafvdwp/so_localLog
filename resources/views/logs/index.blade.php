@@ -113,6 +113,12 @@
             </div>
         @endif
 
+        @error('confirmation')
+            <div class="mb-6 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                {{ $message }}
+            </div>
+        @enderror
+
         {{-- KPI cards --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
 
@@ -205,14 +211,18 @@
             {{-- Actions --}}
             <div class="flex items-center gap-2">
                 <button type="submit"
-                        class="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+                        class="rounded-full border border-blue-200 bg-white px-5 py-2.5 text-sm font-medium text-blue-600 hover:bg-blue-100 transition-colors">
                     Filter
                 </button>
                 @auth
-                    <a href="{{ route('logs.index') }}"
+                    {{-- <a href="{{ route('logs.index') }}"
                        class="rounded-full bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 transition-colors">
                         Reset
-                    </a>
+                    </a> --}}
+                    <button type="button" id="openClearLogsModal"
+                            class="rounded-full border border-red-200 bg-white px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors">
+                        Clear All Logs
+                    </button>
                 @endauth
             </div>
         </form>
@@ -288,6 +298,54 @@
     </main>
 </div>
 
+{{-- ============================== CLEAR ALL LOGS — CONFIRMATION MODAL ============================== --}}
+@auth
+    <div id="clearLogsBackdrop"
+         class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
+        <div id="clearLogsModal"
+             class="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+
+            <div class="flex items-start gap-3 mb-4">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
+                    <svg width="18" height="18" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 23C18.2833 23 18.5208 22.9042 18.7125 22.7125C18.9042 22.5208 19 22.2833 19 22C19 21.7167 18.9042 21.4792 18.7125 21.2875C18.5208 21.0958 18.2833 21 18 21C17.7167 21 17.4792 21.0958 17.2875 21.2875C17.0958 21.4792 17 21.7167 17 22C17 22.2833 17.0958 22.5208 17.2875 22.7125C17.4792 22.9042 17.7167 23 18 23ZM17 19H19V13H17V19ZM18 28C16.6167 28 15.3167 27.7375 14.1 27.2125C12.8833 26.6875 11.825 25.975 10.925 25.075C10.025 24.175 9.3125 23.1167 8.7875 21.9C8.2625 20.6833 8 19.3833 8 18C8 16.6167 8.2625 15.3167 8.7875 14.1C9.3125 12.8833 10.025 11.825 10.925 10.925C11.825 10.025 12.8833 9.3125 14.1 8.7875C15.3167 8.2625 16.6167 8 18 8C19.3833 8 20.6833 8.2625 21.9 8.7875C23.1167 9.3125 24.175 10.025 25.075 10.925C25.975 11.825 26.6875 12.8833 27.2125 14.1C27.7375 15.3167 28 16.6167 28 18C28 19.3833 27.7375 20.6833 27.2125 21.9C26.6875 23.1167 25.975 24.175 25.075 25.075C24.175 25.975 23.1167 26.6875 21.9 27.2125C20.6833 27.7375 19.3833 28 18 28Z" fill="#B31B25"/>
+                    </svg>
+                </span>
+                <div>
+                    <h3 class="text-base font-semibold text-slate-900">Clear all log entries?</h3>
+                    <p class="mt-1 text-sm text-slate-500">
+                        This will permanently delete <strong>all</strong> log entries from the database.
+                        This action cannot be undone.
+                    </p>
+                </div>
+            </div>
+
+            <form id="clearLogsForm" method="POST" action="{{ route('logs.reset') }}">
+                @csrf
+                @method('DELETE')
+
+                <label for="confirmationInput" class="block text-sm font-medium text-slate-700 mb-1.5">
+                    Type <span class="font-mono font-semibold text-red-600">Delete</span> to confirm
+                </label>
+                <input type="text" id="confirmationInput" name="confirmation" autocomplete="off"
+                       placeholder="Delete"
+                       class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-200">
+
+                <div class="mt-6 flex items-center justify-end gap-2">
+                    <button type="button" id="cancelClearLogs"
+                            class="rounded-full px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" id="confirmClearLogs" disabled
+                            class="rounded-full bg-red-600 px-5 py-2.5 text-sm font-medium text-white opacity-50 cursor-not-allowed transition-colors">
+                        Delete all logs
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endauth
+
 <script>
     (function () {
         const sidebar = document.getElementById('sidebar');
@@ -322,6 +380,54 @@
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && isOpen()) {
                 closeSidebar();
+            }
+        });
+    })();
+
+    // ============================== CLEAR ALL LOGS MODAL ==============================
+    (function () {
+        const openBtn = document.getElementById('openClearLogsModal');
+        if (!openBtn) return; // not authenticated, modal isn't rendered
+
+        const backdrop = document.getElementById('clearLogsBackdrop');
+        const cancelBtn = document.getElementById('cancelClearLogs');
+        const confirmBtn = document.getElementById('confirmClearLogs');
+        const input = document.getElementById('confirmationInput');
+        const REQUIRED_TEXT = 'Delete';
+
+        function openModal() {
+            backdrop.classList.remove('hidden');
+            backdrop.classList.add('flex');
+            input.value = '';
+            updateConfirmState();
+            input.focus();
+        }
+
+        function closeModal() {
+            backdrop.classList.add('hidden');
+            backdrop.classList.remove('flex');
+            input.value = '';
+            updateConfirmState();
+        }
+
+        function updateConfirmState() {
+            const matches = input.value === REQUIRED_TEXT;
+            confirmBtn.disabled = !matches;
+            confirmBtn.classList.toggle('opacity-50', !matches);
+            confirmBtn.classList.toggle('cursor-not-allowed', !matches);
+        }
+
+        openBtn.addEventListener('click', openModal);
+        cancelBtn.addEventListener('click', closeModal);
+        input.addEventListener('input', updateConfirmState);
+
+        backdrop.addEventListener('click', function (e) {
+            if (e.target === backdrop) closeModal();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !backdrop.classList.contains('hidden')) {
+                closeModal();
             }
         });
     })();
